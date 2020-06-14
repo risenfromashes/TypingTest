@@ -41,6 +41,7 @@ namespace TypingTest
         {
             this.InitializeComponent();
             setupWindow();
+            testView = new TestTextView(testTextBlock);
             resetButton_Click(null, null);
             createMenus();
         }
@@ -97,7 +98,6 @@ namespace TypingTest
                     case ClockOption.TenMinute:
                         timerDuration = 10 * 60 * 1000;
                         break;
-
                 }
             });
             clockOptions.addOption(ClockOption.OneMinute, "One minute test", true);
@@ -208,7 +208,7 @@ namespace TypingTest
             Debug.WriteLine("Words Processed: {0}/{1}", testWords.Length, count);
         }
         private int totalKeystrokes;
-        private Status status;
+        private Status status = new Status();
         private bool isSinglePunctuation(String word)
         {
             if (word.Length != 1) return false;
@@ -221,6 +221,8 @@ namespace TypingTest
         private Brush Red { get { return new SolidColorBrush(Color.FromArgb(255, 255,0, 0)); } }
         private Brush Blue { get { return new SolidColorBrush(Color.FromArgb(255, 0,255, 255)); } }
         private Brush Green { get { return new SolidColorBrush(Color.FromArgb(255, 0, 255, 0)); } }
+
+        /*
         private void updateTestBlock()
         {
             var enteredWords = editText.Text.Split(" ").Where(word => !(String.IsNullOrEmpty(word) || word == " " || isSinglePunctuation(word))).ToArray();
@@ -308,9 +310,92 @@ namespace TypingTest
                 wrongWordCount = wrongWords
             };
         }
+        */
+        
+        private char lastChar;
+        private TestTextView testView;
+        private int wordStartIndex = 0;
+        private bool isTyping = false;
+        private bool correctWord = false;
+        private int wordLength { get { return editText.Text.Length - 1 - wordStartIndex;  } }
+        private void updateTestBlock()
+        {
+            status.keystrokeCount = totalKeystrokes;
+            if (editText.Text.Length == 0)
+                testView.update(0, span =>
+                {
+                    span.textAreas.Add(new TextArea(TextHighlightStyle.Blue, 0, 0));
+                    span.textAreas.Add(new TextArea(TextHighlightStyle.Default, 1, testWords[status.wordCount].Length - 1));
+                });
+            else 
+            {
+                if (editText.Text.Last() == ' ')
+                {
+                    if (isTyping && !isKeyBackspace)
+                    {
+                        if (wordLength != 1 || !isSinglePunctuation(lastChar.ToString()))
+                        {
+                            status.correctKeystrokeCount++;
+                            status.wordCount++;
+                            if (correctWord) status.correctWordCount++;
+                            else status.wrongWordCount++;
+                        }
+                    }
+                    isTyping = false;
+                }
+                if (editText.Text.Last() != ' ' || (isKeyBackspace && isTyping))
+                {
+                    String enteredWord = "";
+                    int i;
+                    for (i = editText.Text.Length - 1; i >= 0 && editText.Text[i] != ' '; i--)
+                        enteredWord = editText.Text[i] + enteredWord;
+                    wordStartIndex = i + 1;
+                    if (isKeyBackspace)
+                    {
+                        if (isTyping)
+                        {
+                            if (enteredWord.Length < testWords[status.wordCount].Length && testWords[status.wordCount][enteredWord.Length] == lastChar) status.correctKeystrokeCount--;
+                        }
+                        else
+                        {
+                            status.correctKeystrokeCount--;
+                            status.wordCount--;
+                            correctWord = testWords[status.wordCount] == enteredWord;
+                            if (correctWord) status.correctWordCount--;
+                            else status.wrongWordCount--;
+                        }
+                    }
+                    else
+                    {
+                        if (enteredWord.Length <= testWords[status.wordCount].Length && testWords[status.wordCount][enteredWord.Length - 1] == enteredWord.Last()) status.correctKeystrokeCount++;
+                    }
+                    isTyping = true;
+
+                    int j, k = enteredWord.Length;
+                    for (j = 0; j < Math.Min(testWords[status.wordCount].Length, enteredWord.Length); j++)
+                        if (testWords[status.wordCount][j] != enteredWord[j]) break;
+                    var word = testWords[status.wordCount];
+                    lastChar = editText.Text.Last();
+                    correctWord = k == word.Length && word == enteredWord;
+                    Debug.WriteLine($"0 - {j - 1}\n{j} - {k - 1}\n{k} - {k}\n{k + 1} - {word.Length - 1}\n{enteredWord}");
+                    testView.update(status.wordCount, span => {
+                        span.textAreas.Add(new TextArea((correctWord || k <= word.Length) ?
+                        TextHighlightStyle.Green : TextHighlightStyle.Red, 0, j - 1));
+                        span.textAreas.Add(new TextArea(TextHighlightStyle.Red, j, k - 1));
+                        span.textAreas.Add(new TextArea(TextHighlightStyle.Blue, k, k));
+                        span.textAreas.Add(new TextArea(TextHighlightStyle.Default, k + 1, word.Length - 1));
+                    });
+                }
+            }
+            status.wrongKeystrokeCount = status.keystrokeCount - status.correctKeystrokeCount;
+        }
         private volatile bool testRunning = false;
+        private bool isKeyBackspace = false;
         private void editText_KeyUp(object sender, KeyRoutedEventArgs e)
         {
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            isKeyBackspace = e.Key == VirtualKey.Back;
             switch (e.Key)
             {
                 case VirtualKey.Shift:
@@ -335,6 +420,8 @@ namespace TypingTest
                     }
                     break;
             }
+            Debug.WriteLine("{0} milliseconds to update UI", stopwatch.ElapsedMilliseconds);
+            stopwatch.Stop();
         }
         private CancellationTokenSource cts;
         private Thread timerThread = null;
@@ -370,7 +457,7 @@ namespace TypingTest
                         elapsed = timerDuration;
                         timeout = true;
                     }
-                    await Dispatcher.RunAsync(CoreDispatcherPriority.High, () => {
+                    await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => {
                         updateStats(elapsed);
                         if (timeout)
                         {
@@ -394,7 +481,7 @@ namespace TypingTest
                     resetStats();
                     return;
                 }
-                wpmView.Text = Math.Round((double)status.correctKeystrokeCount * timerDuration / millisecondsElapsed / 5).ToString();
+                wpmView.Text = Math.Round((double)status.correctKeystrokeCount * 60000 / millisecondsElapsed / 5).ToString();
                 wordCountView.Text = status.wordCount.ToString();
                 correctWordCountView.Text = status.correctWordCount.ToString();
                 wrongWordCountView.Text = status.wrongWordCount.ToString();
@@ -427,10 +514,13 @@ namespace TypingTest
             totalKeystrokes = 0;
             testRunning = false;
             editText.Text = "";
-            generateRandomTestText(500).ContinueWith(async task =>
+            generateRandomTestText(1000).ContinueWith(async task =>
             {
                 await Dispatcher.RunAsync(CoreDispatcherPriority.High, () => {
+                    testView.updateWords(testWords);
                     updateTestBlock();
+                    status.reset();
+                    isTyping = false;
                     editText.Focus(FocusState.Keyboard);
                 });
             });

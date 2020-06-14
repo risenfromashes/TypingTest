@@ -14,5 +14,9 @@ namespace TypingTest
         public int keystrokeCount { get; set; }
         public int correctKeystrokeCount { get; set; }
         public int wrongKeystrokeCount { get; set; }
+        public void reset()
+        {
+            wordCount = correctWordCount = wrongWordCount = keystrokeCount = correctKeystrokeCount = wrongKeystrokeCount = 0;
+        }
     }
 }

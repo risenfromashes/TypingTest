@@ -26,7 +26,7 @@
             </Button>
         </StackPanel>
         <ScrollViewer x:Name="textContainer" VerticalScrollBarVisibility="Auto" Margin="15,40,15,65" Background="#19FFFFFF" Padding="15,15,15,15" BorderBrush="#7FFFFFFF" BorderThickness="1,1,1,1">
-            <RichTextBlock x:Name="testTextBlock"  Margin="0,0,0,0" FontFamily="Cambria" FontSize="25">
+            <RichTextBlock x:Name="testTextBlock"  Margin="0,0,0,0" FontFamily="Cambria" FontSize="25" TextAlignment="Justify">
             </RichTextBlock>
         </ScrollViewer>
         <StackPanel Margin="15,0,150,15" Height="45" VerticalAlignment="Bottom" BorderThickness="2,2,2,2" FocusVisualPrimaryBrush="{x:Null}" BorderBrush="#7FFFFFFF">
