@@ -7,6 +7,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.Core;
+using Windows.Devices.Printers.Extensions;
 using Windows.Gaming.Input.Custom;
 using Windows.Storage;
 using Windows.System;
@@ -208,9 +209,21 @@ namespace TypingTest
         }
         private int totalKeystrokes;
         private Status status;
+        private bool isSinglePunctuation(String word)
+        {
+            if (word.Length != 1) return false;
+            String punctuations = ",;:!?\"";
+            foreach (char c in punctuations)
+                if (c.ToString() == word)
+                    return true;
+            return false;
+        }
+        private Brush Red { get { return new SolidColorBrush(Color.FromArgb(255, 255,0, 0)); } }
+        private Brush Blue { get { return new SolidColorBrush(Color.FromArgb(255, 0,255, 255)); } }
+        private Brush Green { get { return new SolidColorBrush(Color.FromArgb(255, 0, 255, 0)); } }
         private void updateTestBlock()
         {
-            var enteredWords = editText.Text.Split(" ").Where(word => !(String.IsNullOrEmpty(word) || word == " ")).ToArray();
+            var enteredWords = editText.Text.Split(" ").Where(word => !(String.IsNullOrEmpty(word) || word == " " || isSinglePunctuation(word))).ToArray();
             var isTypingWord = !String.IsNullOrEmpty(editText.Text) && editText.Text.Last() != ' ';
             testTextBlock.Blocks.Clear();
             var para = new Paragraph();
@@ -234,41 +247,47 @@ namespace TypingTest
                                 correctKeyStrokes++;
                             else break;
                         }
+                        int k = enteredWords[i].Length;
                         String word = testWords[i];
-                        if(j < enteredWords[i].Length)
+                        var highlightRun = new Run();
+                        if(j == word.Length && (k > j))
+                            highlightRun.Foreground = Red;
+                        else highlightRun.Foreground = Green;
+                        highlightRun.Text = word.Substring(0, j);
+                        para.Inlines.Add(highlightRun);
+                        word = word.Substring(j);
+                        if (j < testWords[i].Length)
                         {
-                            run.Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 0, 0));
-                        }
-                        else
-                        {
-                            var highlightRun = new Run();
-                            highlightRun.Text = word.Substring(0, j);
-                            highlightRun.Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 255, 255));
-                            highlightRun.TextDecorations = Windows.UI.Text.TextDecorations.Underline;
-                            para.Inlines.Add(highlightRun);
-                            word = word.Substring(j, word.Length - j);
-                            if (j < testWords[i].Length)
+                            var cursorRun = new Run();
+                            cursorRun.TextDecorations = TextDecorations.Underline;
+                            if (j < k)
                             {
-                                word = word.Substring(1, word.Length - 1);
-                                var cursorRun = new Run();
-                                cursorRun.Text = testWords[i][j].ToString();
-                                cursorRun.TextDecorations = TextDecorations.Underline;
-                                cursorRun.FontWeight = FontWeights.Bold;
-                                para.Inlines.Add(cursorRun);
+                                cursorRun.Foreground = Red;
+                                int r = Math.Min(word.Length, k - j);
+                                cursorRun.Text = word.Substring(0, r);
+                                word = word.Substring(r);
                             }
-                        }
+                            else
+                            {
+                                cursorRun.Text = word[0].ToString();
+                                word = word.Substring(1);
+                                cursorRun.FontWeight = FontWeights.Bold;
+                                cursorRun.Foreground = Blue;
+                            }
+                            para.Inlines.Add(cursorRun);
+                        }                        
                         run.Text = word;
                     }
                 }
                 else if (testWords[i] == enteredWords[i])
                 {
-                    run.Foreground = new SolidColorBrush(Color.FromArgb(255, 0, 255, 0));
+                    run.Foreground = Green;
                     correctKeyStrokes += testWords[i].Length + 1; //accounting for space
                     correctWords++;
                 }
                 else
                 {
-                    run.Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 0, 0));
+                    run.Foreground = Red;
                     wrongWords++;
                     for (int j = 0; j < Math.Min(testWords[i].Length, enteredWords[i].Length); j++)
                         if (testWords[i][j] == enteredWords[i][j])
@@ -408,7 +427,7 @@ namespace TypingTest
             totalKeystrokes = 0;
             testRunning = false;
             editText.Text = "";
-            generateRandomTestText(1000).ContinueWith(async task =>
+            generateRandomTestText(500).ContinueWith(async task =>
             {
                 await Dispatcher.RunAsync(CoreDispatcherPriority.High, () => {
                     updateTestBlock();

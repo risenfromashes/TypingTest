@@ -9,7 +9,7 @@
   <Identity
     Name="358fef1d-7d7f-4ff2-9777-acc1fa3e5da5"
     Publisher="CN=ARK"
-    Version="1.0.0.0" />
+    Version="0.1.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="358fef1d-7d7f-4ff2-9777-acc1fa3e5da5" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
