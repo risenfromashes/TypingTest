@@ -1,0 +1,11 @@
+﻿<Application
+    x:Class="TypingTest.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:TypingTest">
+    <Application.Resources>
+        <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Black" Opacity="0.2"/>
+        <SolidColorBrush x:Key="TextControlForegroundFocused" Color="White"/>
+        <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="White" Opacity="0.2"/>
+    </Application.Resources>
+</Application>
